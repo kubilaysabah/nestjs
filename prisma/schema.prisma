@@ -1,0 +1,256 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model user {
+  id         String      @id @default(uuid())
+  firstname  String?
+  lastname   String?
+  email      String      @unique
+  phone      String?
+  password   String
+  credit     Int?        @default(0)
+  status     Boolean?    @default(false)
+  tax_payers tax_payer[]
+  orders     order[]
+}
+
+model order {
+  id                                    String   @id @default(uuid())
+  date                                  DateTime @default(now())
+  user_id                               String
+  user                                  user     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  company_name                          String?
+  tax_number_or_turkish_identity_number String?
+  address                               String?
+  credit                                Int?     @default(0)
+  price                                 Decimal? @default(0)
+}
+
+model integrator {
+  id               String      @id @default(uuid())
+  integration_code Int         @unique @default(autoincrement())
+  name             String
+  phone            String?
+  email            String?
+  city             String?
+  tax_payer        tax_payer[]
+}
+
+model tax_payer {
+  id                                String         @id @default(uuid())
+  turkish_identity_number           String?
+  firstname                         String?
+  lastname                          String?
+  phone                             String?
+  email                             String         @unique
+  tax_number                        String?
+  tax_office                        String?
+  tax_office_code                   String?
+  trade_register_number             String?
+  central_registry_system_number    String?
+  opening_date                      DateTime?
+  closing_date                      DateTime?
+  registration_date                 DateTime?
+  registration_place                String?
+  tax_obligation                    Boolean?       @default(false)
+  subscribed_capital                Decimal?       @default(0)
+  paid_capital                      Decimal?       @default(0)
+  ssi                               String?
+  professional_organizations        String?
+  professional_organizations_number String?
+  integrator_username               String?
+  integrator_password               String?
+  integrator_client_id              String?
+  integrator_client_secret          String?
+  simple_entry                      Boolean?
+  invoices                          invoice[]
+  account_plans                     account_plan[]
+  user_id                           String
+  user                              user           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  integrator_id                     String?
+  integrator                        integrator?    @relation(fields: [integrator_id], references: [id], onDelete: SetNull)
+  voucher                           voucher[]
+  activity                          activity?      @relation(fields: [activity_id], references: [id], onDelete: SetNull)
+  activity_id                       String?
+  created_at                        DateTime?      @default(now())
+  updated_at                        DateTime?      @updatedAt
+}
+
+model invoice_tax {
+  id         String   @id @default(uuid())
+  name       String?
+  amount     Decimal? @default(0)
+  rate       Decimal? @default(0)
+  code       String?
+  currency   String?
+  invoice    invoice  @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+  invoice_id String
+}
+
+model invoice_line_tax {
+  id              String       @id @default(uuid())
+  name            String?
+  amount          Decimal?     @default(0)
+  rate            Decimal?     @default(0)
+  code            String?
+  currency        String?
+  invoice_line    invoice_line @relation(fields: [invoice_line_id], references: [id], onDelete: Cascade)
+  invoice_line_id String
+}
+
+model invoice {
+  id                                    String         @id @default(uuid())
+  ETTN                                  String         @unique
+  name                                  String?
+  tax_number_or_turkish_identity_number String?
+  invoice_number                        String?
+  invoice_date                          DateTime?
+  invoice_type                          String?
+  scenario                              String?
+  total_amount                          Decimal?       @default(0)
+  product_or_service_amount             Decimal?       @default(0)
+  total_amount_including_taxes          Decimal?       @default(0)
+  total_amount_excluding_taxes          Decimal?       @default(0)
+  vat_rate                              Decimal?       @default(0)
+  vat_amount                            Decimal?       @default(0)
+  discount_amount                       Decimal?       @default(0)
+  discount_rate                         Decimal?       @default(0)
+  increase_rate                         Decimal?       @default(0)
+  increase_amount                       Decimal?       @default(0)
+  stoppage_code                         String?
+  taxes                                 invoice_tax[]
+  currency                              String?
+  tax_payer                             tax_payer      @relation(fields: [tax_payer_id], references: [id], onDelete: Cascade)
+  tax_payer_id                          String
+  invoice_lines                         invoice_line[]
+  account_plan                          account_plan?  @relation(fields: [account_plan_id], references: [id], onDelete: SetNull)
+  account_plan_id                       String?
+  voucher                               voucher?
+  type                                  Int?
+  created_at                            DateTime?      @default(now())
+  updated_at                            DateTime?      @updatedAt
+
+  @@unique([account_plan_id, id])
+  @@unique([ETTN, id])
+}
+
+model invoice_line {
+  id              String             @id @default(uuid())
+  invoice_type    String?
+  name            String?
+  product_code    String?
+  account_code    String?
+  stoppage_code   String?
+  unit            String?
+  quantity        Decimal?           @default(0)
+  unit_amount     Decimal?           @default(0)
+  discount_rate   Decimal?           @default(0)
+  product_amount  Decimal?           @default(0)
+  currency        String?
+  taxes           invoice_line_tax[]
+  invoice         invoice            @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+  invoice_id      String
+  voucher         voucher?
+  account_plan    account_plan?      @relation(fields: [account_plan_id], references: [id], onDelete: SetNull)
+  account_plan_id String?
+  created_at      DateTime?          @default(now())
+  updated_at      DateTime?          @updatedAt
+
+  @@unique([account_plan_id, id])
+}
+
+model voucher {
+  id                                    String        @id @default(uuid())
+  account_name                          String?
+  account_code                          String?
+  invoice_type                          String?
+  invoice_date                          DateTime?
+  invoice_number                        String?
+  stock_code                            String?
+  vat_number_or_turkish_identity_number String?
+  description                           String?
+  currency                              String?
+  quantity                              Decimal?      @default(0)
+  vat_rate                              Decimal?      @default(0)
+  vat_amount                            Decimal?      @default(0)
+  stoppage_code                         String?
+  stoppage_rate                         Decimal?      @default(0)
+  stoppage_amount                       Decimal?      @default(0)
+  debt                                  Decimal?      @default(0)
+  credit                                Decimal?      @default(0)
+  invoice_line                          invoice_line? @relation(fields: [invoice_line_id], references: [id], onDelete: Cascade)
+  invoice_line_id                       String?       @unique
+  invoice                               invoice?      @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+  invoice_id                            String?       @unique
+  tax_payer                             tax_payer     @relation(fields: [tax_payer_id], references: [id], onDelete: Cascade)
+  tax_payer_id                          String
+  created_at                            DateTime?     @default(now())
+  updated_at                            DateTime?     @updatedAt
+}
+
+model activity {
+  id         String      @id @default(uuid())
+  name       String
+  code       String
+  tax_payers tax_payer[]
+}
+
+model account_plan {
+  id                                    String         @id @default(uuid())
+  account_plan_id                       String         @unique
+  code                                  String?
+  account_name                          String?
+  account_character                     Int?
+  account_level                         Decimal?       @default(0)
+  debt_amount                           Decimal?       @default(0)
+  credit_amount                         Decimal?       @default(0)
+  debt_quantity                         Decimal?       @default(0)
+  credit_quantity                       Decimal?       @default(0)
+  vat_rate                              Decimal?       @default(0)
+  unit                                  String?
+  stock_code                            String?
+  turkish_identity_number_or_tax_number String?
+  special_code_1                        String?
+  special_code_2                        String?
+  is_have_sub_account                   Boolean?       @default(false)
+  currency                              String?
+  exchange                              Decimal?       @default(0)
+  use_exchange_difference               Boolean?       @default(false)
+  exchange_difference_type              Decimal?       @default(0)
+  exchange_difference_a_account_code    String?
+  exchange_difference_b_account_code    String?
+  exchange_difference                   Decimal?       @default(0)
+  vat_account_code                      String?
+  stoppage_type_code                    String?
+  stoppage_rate_1                       Decimal?       @default(0)
+  stoppage_rate_2                       Decimal?       @default(0)
+  account_name_2                        String?
+  functioning_code                      String?
+  address_number                        String?
+  debt_foreign_currency                 Decimal?       @default(0)
+  credit_foreign_currency               Decimal?       @default(0)
+  version                               String?
+  updatable                             Boolean?       @default(false)
+  tax_payer                             tax_payer      @relation(fields: [tax_payer_id], references: [id], onDelete: Cascade)
+  tax_payer_id                          String
+  invoices                              invoice[]
+  invoice_lines                         invoice_line[]
+  createdAt                             DateTime?
+  updated_at                            DateTime?      @updatedAt
+}
+
+model user_history {
+  id String @id @default(uuid())
+}
